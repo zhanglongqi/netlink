@@ -2,8 +2,11 @@ KDIR := /lib/modules/$(shell uname -r)/build
 
 obj-m += netlinkKernel.o
 
+CCFLAGS += -std=gnu11 -g -O0 -Wall -Wextra 
+
+.PHONY: all
 all:
-	$(MAKE) -C $(KDIR) SUBDIRS=$(PWD) modules
+	$(MAKE) -C $(KDIR) M=$(PWD) modules
 
 clean:
 	rm -rf *.o *.ko *.mod.* *.cmd .module* modules* Module* .*.cmd .tmp*
