@@ -5,6 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
+#include <poll.h>
+
+#define USING_POLL
 
 #define NETLINK_USER 31
 
@@ -28,7 +32,6 @@ int main()
 	bind(sock_fd, (struct sockaddr *)&src_addr, sizeof(src_addr));
 
 	memset(&dest_addr, 0, sizeof(dest_addr));
-	memset(&dest_addr, 0, sizeof(dest_addr));
 	dest_addr.nl_family = AF_NETLINK;
 	dest_addr.nl_pid    = 0; /* For Linux Kernel */
 	dest_addr.nl_groups = 0; /* unicast */
@@ -39,7 +42,7 @@ int main()
 	nlh->nlmsg_pid   = getpid();
 	nlh->nlmsg_flags = 0;
 
-	strcpy(NLMSG_DATA(nlh), "Hello");
+	strcpy(NLMSG_DATA(nlh), "Hello from USER");
 
 	iov.iov_base    = (void *)nlh;
 	iov.iov_len     = nlh->nlmsg_len;
@@ -53,7 +56,38 @@ int main()
 	printf("Waiting for message from kernel\n");
 
 	/* Read message from kernel */
+	#ifndef USING_POLL
 	recvmsg(sock_fd, &msg, 0);
 	printf("Received message payload: %s\n", (char *)NLMSG_DATA(nlh));
 	close(sock_fd);
+	#else
+	int           ret = 0;
+	struct pollfd clientfd[1];
+	clientfd[0].fd         = sock_fd;
+	clientfd[0].events     = POLLIN; //POLLRDNORM;
+	unsigned char buf[100] = { 0 };
+	memset(buf, sizeof(buf), 0);
+
+	while (1) {
+		printf("before poll\n");
+		if (0 >= poll(clientfd, 1, 1000)) {
+			printf("poll error\n");
+			break;
+		}
+		printf("after poll\n");
+		if (clientfd[0].revents & POLLIN) {
+			#ifdef USING_RECVMSG
+			ret = recvmsg(clientfd[0].fd, &msg, 0);
+			printf("Received message payload: %s\n", (char *)NLMSG_DATA(nlh));
+			#else
+			ret = recv(clientfd[0].fd, buf, 100, 0);
+			if (ret > 0) {
+				for (int i = 0; i < ret; i++)
+					printf("payloud %d: %d:%c\n", i, buf[i], buf[i]);
+			}
+			#endif
+			ret = 0;
+		}
+	}
+	#endif
 }
