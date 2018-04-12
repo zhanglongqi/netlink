@@ -2,7 +2,7 @@ KDIR := /lib/modules/$(shell uname -r)/build
 
 obj-m += netlinkKernel.o
 
-CCFLAGS += -std=gnu11 -g -O0 -Wall -Wextra 
+ccflags-y += -std=gnu11 -g -O0 -Wall -Wextra 
 
 .PHONY: all
 all:
