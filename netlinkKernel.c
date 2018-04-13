@@ -10,7 +10,7 @@
 
 struct sock *nl_sk = NULL;
 
-static void hello_nl_recv_msg(struct sk_buff *skb)
+static void nl_recv_msg(struct sk_buff *skb)
 {
 
 	struct nlmsghdr *nlh;
@@ -24,7 +24,7 @@ static void hello_nl_recv_msg(struct sk_buff *skb)
 
 	nlh = (struct nlmsghdr *)skb->data;
 	printk(KERN_INFO "Netlink received msg payload:%s\n", (char *)nlmsg_data(nlh));
-	pid = nlh->nlmsg_pid; /*pid of sending process */
+	pid = nlh->nlmsg_pid; /*pid of sending process, for unicast */
 
 
 
@@ -38,12 +38,12 @@ static void hello_nl_recv_msg(struct sk_buff *skb)
 	}
 
 	nlh                           = nlmsg_put(skb_out, 0, 0, NLMSG_DONE, msg_size, 0);
-	// NETLINK_CB(skb_out).dst_group = 0;
-	NETLINK_CB(skb_out).dst_group = GROUP;
+	// NETLINK_CB(skb_out).dst_group = 0; // for unicast 
+	NETLINK_CB(skb_out).dst_group = GROUP;  // for multicast or broadcast 
 	strncpy(nlmsg_data(nlh), msg, msg_size);
 
-	// res = nlmsg_unicast(nl_sk, skb_out, pid);
-	res = nlmsg_multicast(nl_sk, skb_out, 0, GROUP, 0);
+	// res = nlmsg_unicast(nl_sk, skb_out, pid); // for unicast 
+	res = nlmsg_multicast(nl_sk, skb_out, 0, GROUP, 0); // for multicast or broadcast
 	if (res < 0)
 		printk(KERN_INFO "Error while sending bak to user %d\n", res);
 }
@@ -54,12 +54,12 @@ static int __init hello_init(void)
 	printk("Entering: %s\n", __FUNCTION__);
 	//This is for 3.6 kernels and above.
 	struct netlink_kernel_cfg cfg = {
-		.input  = hello_nl_recv_msg,
-		.groups = GROUP,
+		.input  = nl_recv_msg,
+		.groups = GROUP, // for multicast or broadcast
 	};
 
 	nl_sk = netlink_kernel_create(&init_net, NETLINK_USER, &cfg);
-	//nl_sk = netlink_kernel_create(&init_net, NETLINK_USER, 0, hello_nl_recv_msg,NULL,THIS_MODULE);
+	//nl_sk = netlink_kernel_create(&init_net, NETLINK_USER, 0, nl_recv_msg,NULL,THIS_MODULE);
 	if (!nl_sk) {
 
 		printk(KERN_ALERT "Error creating socket.\n");
