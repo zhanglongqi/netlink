@@ -12,7 +12,6 @@
 // #define USING_POLL
 #define USING_RECVMSG
 
-
 #define NETLINK_USER 31
 #define MY_GROUP 1
 #define MAX_PAYLOAD 1024 /* maximum payload size*/
